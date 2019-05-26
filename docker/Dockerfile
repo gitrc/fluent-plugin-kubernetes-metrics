@@ -9,8 +9,6 @@ ENV VERSION=${VERSION}
 ENV DUMB_INIT_VERSION=1.2.1
 ENV SU_EXEC_VERSION=0.2
 
-COPY *.gem /tmp/
-
 ARG DEBIAN_FRONTEND=noninteractive
 # Do not split this into multiple RUN!
 # Docker creates a layer for every RUN-Statement
@@ -26,7 +24,7 @@ RUN apk update \
         dumb-init==${DUMB_INIT_VERSION}-r0 \
  && apk add --no-cache --virtual .build-deps \
         build-base \
-        ruby-dev wget gnupg \
+        ruby-dev ruby-bundler ruby-rake wget gnupg git \
  && echo 'gem: --no-document' >> /etc/gemrc \
  && gem install -N \
          fluentd:1.4.0 \
@@ -36,7 +34,13 @@ RUN apk update \
          multi_json:1.13.1 \
          bigdecimal:1.4.3 \
          kubeclient:4.3.0 \
- && gem install -N /tmp/*.gem \
+ && git clone https://github.com/splunk/fluent-plugin-kubernetes-metrics.git \
+ && cd fluent-plugin-kubernetes-metrics \
+ && git checkout tags/${VERSION} \
+ && gem build fluent-plugin-kubernetes-metrics \
+ && gem install fluent-plugin-kubernetes-metrics-${VERSION}.gem \
+ && cd .. \
+ && rm -rf fluent-plugin-kubernetes-metrics \
  && apk del .build-deps \
  && rm -rf /var/cache/apk/* \
  && rm -rf /tmp/* /var/tmp/* /usr/lib/ruby/gems/*/cache/*.gem
